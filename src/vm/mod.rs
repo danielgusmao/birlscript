@@ -6,6 +6,7 @@ mod section;
 mod parameter;
 mod signal;
 mod command;
+mod comparision;
 
 use parser;
 use value;
@@ -26,6 +27,8 @@ pub struct VM {
     last_sections: Vec<String>,
     /// Ultimo sinal jogado à VM
     last_signal: Option<signal::Signal>,
+    /// Ultima comparação
+    last_cmp: comparision::Comparision,
 }
 
 impl VM {
@@ -37,7 +40,7 @@ impl VM {
                 return sect;
             }
         }
-        abort!("Seção \"{}\" não declarada.", name); // Se chegou até aqui, é porquê não foi encontrada
+        panic!("Seção \"{}\" não declarada.", name); // Se chegou até aqui, é porquê não foi encontrada
     }
 
     /// Declara a variavel na stack da VM
@@ -48,7 +51,7 @@ impl VM {
             loop {
                 let ref v = self.stack[index];
                 if v.id == var.id {
-                    abort!("Variavel \"{}\" já declarada.", var.real_id())
+                    panic!("Variavel \"{}\" já declarada.", var.real_id())
                 }
                 if index == 0 {
                     break; // Acabou a stack
@@ -58,6 +61,37 @@ impl VM {
         }
         // Variavel ainda não declarada
         self.stack.push(var);
+    }
+
+    /// Tenta modificar a variavel com o nome passado.
+    pub fn modify_variable(&mut self, name: &str, value: value::Value) {
+        if self.stack.is_empty() {
+            panic!("Tentativa de acessar variável com Stack vazia.");
+        }
+        let current_sect = self.current_section().to_string();
+        // Tenta procurar, primeiramente, pelo nome passado (com seção)
+        let mut found = false;
+        for var in &mut self.stack {
+            if var.id == name {
+                var.modify(value.clone(), &current_sect);
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            // Não encontrado, tenta com GLOBAL
+            let name = variable::Variable::change_made_name(name, parser::kw::KW_SECT_GLOBAL);
+            for var in &mut self.stack {
+                if var.id == name {
+                    var.modify(value.clone(), &current_sect);
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if !found {
+            panic!("Variavel não encontrada: {}", name);
+        }
     }
 
     /// Retorna o nome da seção atual que está sendo executada
@@ -74,7 +108,7 @@ impl VM {
         let varname = variable::Variable::make_name(name, section);
         // verifica de traz pra frente, variavel por variavel, se encontra alguma que é igual
         if self.stack.len() == 0 {
-            abort!("Nenhuma variavel declarada. pedido: {}", name);
+            panic!("Nenhuma variavel declarada. pedido: {}", name);
         }
         let mut index = self.stack.len() - 1;
         let mut found = false;
@@ -103,9 +137,46 @@ impl VM {
             }
         }
         if !found {
-            abort!("Variável não encontrada: \"{}\"", name)
+            panic!("Variável não encontrada: \"{}\"", name)
         }
         res
+    }
+
+    /// Compara e coloca a comparação na VM
+    pub fn compare(&mut self, left: value::Value, right: value::Value) {
+        let result = comparision::compare(left, right);
+        self.last_cmp = result;
+    }
+
+    /// Verifica se a ultima comparação foi a passada
+    pub fn last_cmp_is(&self, cmp: comparision::Comparision) -> bool {
+        use vm::comparision::Comparision::*;
+        match cmp {
+            Equal => {
+                match self.last_cmp {
+                    Equal => true,
+                    _ => false,
+                }
+            }
+            More => {
+                match self.last_cmp {
+                    More => true,
+                    _ => false,
+                }
+            }
+            Less => {
+                match self.last_cmp {
+                    Less => true,
+                    _ => false,
+                }
+            }
+            NEqual => {
+                match self.last_cmp {
+                    Equal => false,
+                    _ => false,
+                }
+            }
+        }
     }
 
     /// Faz o pop das ultimas variaveis declaradas na seção
@@ -144,6 +215,7 @@ impl VM {
             stack: vec![],
             last_sections: vec![],
             last_signal: None,
+            last_cmp: comparision::Comparision::NEqual,
         }
     }
 
@@ -167,7 +239,7 @@ impl VM {
             self.get_section(name).rec += 1;
             // Se o numero de recursão ultrapassar ou chegar no maximo, aborte
             if self.get_section(name).rec >= MAX_RECURSION {
-                abort!("Número máximo de recursão permitido alcançado em \"{}\"",
+                panic!("Número máximo de recursão permitido alcançado em \"{}\"",
                        name)
             }
         } else {
@@ -175,7 +247,7 @@ impl VM {
             self.last_sections.push(name.to_string());
         }
         // Não há necessidade aqui de uma referencia, então clona a seção e executa
-        // (necessita?)
+        // (há?)
         let mut section = self.get_section(name).clone();
         section.run(self, arguments);
     }

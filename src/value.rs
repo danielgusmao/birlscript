@@ -98,7 +98,7 @@ fn expand_syms(expr: &mut String, env: &vm::VM) {
         expr.clear();
         expr.push_str(&newexpr);
     } else {
-        abort!("Expressão vazia!")
+        panic!("Expressão vazia!")
     }
 }
 
@@ -144,7 +144,7 @@ pub fn expand_sym_list(slist: &str, env: &vm::VM) -> Vec<Value> {
     let end_par = match slist.find(')') {
         Some(pos) => pos,
         None => {
-            abort!("Lista de argumentos de chamada não possui parentese de fechamento. \"{}\"",
+            panic!("Lista de argumentos de chamada não possui parentese de fechamento. \"{}\"",
                    slist)
         }
     };
@@ -172,7 +172,7 @@ pub const VALUETYPE_NUM: &'static str = "TRAPEZIO DESCENDENTE";
 /// Descobre o tipo de uma expressão
 fn expr_type(expr: &str) -> ValueType {
     if expr == "" {
-        abort!("Expressão vazia!")
+        panic!("Expressão vazia!")
     }
     // Tenta descobrir o tipo da expressão por meio dos seus primeiros caracteres
     let mut chars = expr.chars();
@@ -181,18 +181,18 @@ fn expr_type(expr: &str) -> ValueType {
         '-' => {
             match chars.nth(1).unwrap() {
                 '0'...'9' => ValueType::Number,
-                _ => abort!("Operador \"-\" atribuido a uma expressão que não o suporta."),
+                _ => panic!("Operador \"-\" atribuido a uma expressão que não o suporta."),
             }
         }
         '\'' | '\"' => ValueType::Str,
-        _ => abort!("Tipo de expressão invalido. Expressão: {}", expr),
+        _ => panic!("Tipo de expressão invalido. Expressão: {}", expr),
     }
 }
 
 /// Faz parsing de um numero
 fn parse_num(expr: &str) -> Value {
     if expr.contains('\"') || expr.contains('\'') {
-        abort!("Uma expressão com números não deve conter strings ou caracteres")
+        panic!("Uma expressão com números não deve conter strings ou caracteres")
     }
     let res = match meval::eval_str(expr) {
         Ok(x) => x,
@@ -227,7 +227,7 @@ fn parse_str_tokenize(expr: &str) -> Vec<String> {
             }
             '\"' if !in_str => {
                 if !last_op {
-                    abort!("No meio de duas strings so deve haver um operador! \
+                    panic!("No meio de duas strings so deve haver um operador! \
                                            expr: {}",
                            expr)
                 } else {
@@ -240,7 +240,7 @@ fn parse_str_tokenize(expr: &str) -> Vec<String> {
             '\'' if !in_str && !in_char => {
                 // Caractere
                 if !last_op {
-                    abort!("No meio de uma string e um caractere so deve haver um operador!")
+                    panic!("No meio de uma string e um caractere so deve haver um operador!")
                 }
                 in_char = true;
                 index += 1;
@@ -252,12 +252,12 @@ fn parse_str_tokenize(expr: &str) -> Vec<String> {
             '+' if !in_str => {
                 last_op = true;
             }
-            '-' | '*' | '/' if !in_str => abort!("O operador {} não é permitido em strings!", c),
+            '-' | '*' | '/' if !in_str => panic!("O operador {} não é permitido em strings!", c),
             _ if in_char => {
                 tokens[index].push(c);
             }
             '0'...'9' if !in_str && !in_char => {
-                abort!("Números não devem ser usados em operações com strings ou caracteres. \
+                panic!("Números não devem ser usados em operações com strings ou caracteres. \
                         expr: {}",
                        expr)
             }

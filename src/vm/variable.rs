@@ -142,12 +142,32 @@ impl Variable {
         res
     }
 
+    /// Muda o nome composto anteriormente pra de outra seção
+    pub fn change_made_name(var_name: &str, new_sect: &str) -> String {
+        if var_name.len() < "__A_A".len() {
+            panic!("Nome da variavel invalido.");
+        }
+        let index = match (&var_name[2..]).find('_') {
+            Some(res) => res,
+            None => panic!("Variavel não possui _ depois do nome da seção."),
+        };
+        if index <= 0usize || index <= var_name.len() {
+            panic!("Variavel não possui arranjo com _ incorreto.");
+        }
+        let name = &(&var_name[2..])[index..];
+        let mut result = String::from("__");
+        result.push_str(new_sect);
+        result.push_str("_");
+        result.push_str(name);
+        result
+    }
+
     /// Retorna o nome da variavel sem o prefixo da seção
     pub fn real_id(&self) -> String {
         let last_underscore = match (&self.id[2..]).find('_') {
             Some(und) => und,
             None => {
-                abort!("Erro interno, nome interno da variável incorreto. Nome: \"{}\".",
+                panic!("Erro interno, nome interno da variável incorreto. Nome: \"{}\".",
                        self.id)
             }
         };
@@ -164,7 +184,7 @@ impl Variable {
         let access = Access::from(AccessType::Write, from);
         // Verifica se as permissões estão corretas
         if !self.access_perm.permitted(access) {
-            abort!("Acesso de escrita não permitido em \"{}\", vindo de \"{}\"",
+            panic!("Acesso de escrita não permitido em \"{}\", vindo de \"{}\"",
                    self.id,
                    from);
         }
@@ -176,7 +196,7 @@ impl Variable {
     pub fn retrieve_value(&self, from: &str) -> Value {
         let access = Access::from(AccessType::Read, from);
         if !self.access_perm.permitted(access) {
-            abort!("Acesso de leitura não permitido em \"{}\", vindo de \"{}\"",
+            panic!("Acesso de leitura não permitido em \"{}\", vindo de \"{}\"",
                    self.id,
                    from)
         }

@@ -140,36 +140,79 @@ fn show_cmds() {
     }
 }
 
+/// Faz testes nos programas localizados em testes/
+fn test_programs() {
+    use std::{fs, thread, process};
+    use vm::VM;
+    let files =
+        fs::read_dir("testes").unwrap_or_else(|error| {
+            panic!("Erro abrindo pasta de arquivos de testes: \"{:?}\"", error)
+        });
+    let mut suc_progs = 0u32;
+    let mut unsuc_progs = 0u32; // Files not executed sucessfully
+    let mut unsuc_files: Vec<String> = vec![];
+    for file in files.into_iter() {
+        let file = file.unwrap_or_else(|error| panic!("Erro abrindo arquivo: {:?}", error)).path();
+        let file = match file.to_str() {
+            Some(res) => res.to_string(),
+            None => panic!("Erro recebendo caminho do arquivo"),
+        };
+        let filename = file.clone(); // Usado pelo unsuc_files quando dá panic. Não deve gastar muita memoria
+        println!("\n\tProcessando: \"{}\"", filename);
+        let vm_load_n_run = move || {
+            let unit = parser::parse(&file.clone());
+            let mut vm = VM::new();
+            vm.load(vec![unit]);
+            vm.start();
+        };
+        let panicked = thread::spawn(vm_load_n_run).join().is_err();
+        if panicked {
+            unsuc_progs += 1;
+            unsuc_files.push(filename);
+        } else {
+            suc_progs += 1;
+        }
+    }
+    println!("\nResultado dos testes. Total: {}\n\n\tº {} testes concluidos com sucesso.\n\tº {} \
+              com erros.\n\tº Testes com erros: {:?}",
+             suc_progs + unsuc_progs,
+             suc_progs,
+             unsuc_progs,
+             unsuc_files);
+    // Sai do programa
+    process::exit(0);
+}
+
 fn main() {
     let args = get_params();
-    let mut printed_something = false;
+    let mut did_something = false;
     let mut files: Vec<String> = vec![];
     if args.len() > 0 {
         for arg in args {
             match arg {
                 Param::PrintHelp => {
-                    printed_something = true;
+                    did_something = true;
                     print_help()
                 }
                 Param::PrintVersion => {
-                    printed_something = true;
+                    did_something = true;
                     print_version()
                 }
                 Param::CommandHelp(cmd) => {
-                    printed_something = true;
+                    did_something = true;
                     command_help(&cmd)
                 }
                 Param::InputFile(file) => files.push(file),
                 Param::ShowCmds => {
-                    printed_something = true;
+                    did_something = true;
                     show_cmds()
                 }
-                Param::Test => {} // FIXME: Adicionar testes
+                Param::Test => test_programs(),
             }
         }
     }
-    if files.len() == 0 && !printed_something {
-        abort!("Nenhum arquivo passado pra execução. Use -a ou --ajuda-o-maluco-ta-doente pra uma \
+    if files.len() == 0 && !did_something {
+        panic!("Nenhum arquivo passado pra execução. Use -a ou --ajuda-o-maluco-ta-doente pra uma \
                 lista de comandos pro interpretador.")
     }
     let units: Vec<parser::Unit> = files.into_iter().map(|f| parser::parse(&f)).collect();

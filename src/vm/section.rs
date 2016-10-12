@@ -55,12 +55,20 @@ impl Section {
 
     /// Roda a seção atual
     pub fn run(&mut self, vm: &mut VM, args: Vec<parameter::Parameter>) {
+        use std::process;
+        use vm::variable::{Variable, Permission};
+        use value::Value;
         if !parameter::Parameter::matches(args, self.args.clone()) {
-            abort!("Os argumentos para \"{}\" tem tipos diferentes ou uma quantidade diferente do \
+            panic!("Os argumentos para \"{}\" tem tipos diferentes ou uma quantidade diferente do \
                     esperado foi passado.",
                    self.name)
         }
-        use std::process;
+        let current_sect = self.name.clone();
+        let jaula = Variable::from("JAULA",
+                                   &current_sect,
+                                   Value::Str(Box::new(current_sect.clone())),
+                                   Permission::ReadOnly);
+        vm.declare_variable(jaula); // Declara JAULA na seção atual
         for command in &self.commands {
             let signal = command::run(command.clone(), vm);
             vm.last_signal = signal.clone();

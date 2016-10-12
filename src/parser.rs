@@ -62,6 +62,7 @@ pub mod kw {
 use value;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 /// Representa um comando, que é executado dentro do contexto atual
 /// Os valores passados aos comandos têm nomes fantasia alfabéticos para exemplificação
 pub enum Command {
@@ -96,8 +97,8 @@ pub enum Command {
     /// Sai do programa
     Quit(String),
     /// Retorna da seção atual
+    /// Valor, que pode existir ou não
     Return(Option<String>),
-    // Valor, que pode existir ou não
     /// Le a entrada padrão pra uma variavel
     Input(String),
     /// Le a entrada padrão e retorna um uppercase
@@ -220,7 +221,7 @@ fn check_n_params(command: CommandType, num_params: usize) {
         CommandType::InputUpper => (1, kw::KW_INPUT_UP),
     };
     if expected != num_params {
-        abort!("\"{}\" espera {} parametros, porém {} foram passados.",
+        panic!("\"{}\" espera {} parametros, porém {} foram passados.",
                id,
                expected,
                num_params)
@@ -278,7 +279,7 @@ fn split_arguments(args: String) -> Vec<String> {
                 }
                 ')' if in_par => {
                     if num_op_par <= 0 {
-                        abort!("Parentese de fechamento sem nenhum abrindo!")
+                        panic!("Parentese de fechamento sem nenhum abrindo!")
                     }
                     num_op_par -= 1;
                     if num_op_par <= 0 {
@@ -438,7 +439,7 @@ fn parse_cmd(cmd: &str) -> Command {
             check_n_params(CommandType::InputUpper, arguments.len());
             Command::InputUpper(arguments[0].clone())
         }
-        _ => abort!("Comando \"{}\" não existe.", cmd_type),
+        _ => panic!("Comando \"{}\" não existe.", cmd_type),
     };
     cmd
 }
@@ -491,7 +492,7 @@ pub fn parse(file: &str) -> Unit {
     let f = match fs::File::open(file) {
         Ok(ff) => ff,
         Err(err) => {
-            abort!("Não foi possivel abrir o arquivo \"{}\". Erro: {}",
+            panic!("Não foi possivel abrir o arquivo \"{}\". Erro: {}",
                    file,
                    err)
         }
@@ -569,7 +570,7 @@ pub fn parse(file: &str) -> Unit {
             LineType::Command => final_unit.sects[0].lines.push(parse_cmd(&change_accents(&line))),
             _ => {
                 // Quando não for nenhuma das acima
-                abort!("Erro de sintaxe! Linha atual não reconhecida no contexto: {}",
+                panic!("Erro de sintaxe! Linha atual não reconhecida no contexto: {}",
                        line)
             }
         }
@@ -613,13 +614,13 @@ pub struct ExpectedParameter {
 fn parse_parameter(param: &str) -> ExpectedParameter {
     let div_token = match param.find(':') {
         Some(pos) => pos,
-        None => abort!("Parametro deve ter tipo declarado depois do nome, separado por um ':'"),
+        None => panic!("Parametro deve ter tipo declarado depois do nome, separado por um ':'"),
     };
     let param_id = &param[..div_token];
     let param_tp = match value::ValueType::try_parse(&param[div_token + 1..]) {
         Some(tp) => tp,
         None => {
-            abort!("Tipo inválido para parâmetro: {}",
+            panic!("Tipo inválido para parâmetro: {}",
                    &param[div_token + 1..])
         }
     };
@@ -639,11 +640,11 @@ fn parse_section_parameters(decl_line: &str) -> Vec<ExpectedParameter> {
         // JAULA seção (PARAMETRO1:TIPO, ...)
         let start_par = decl_line.find('(').unwrap(); // Ja verifiquei a existencia de um parentese
         if start_par >= decl_line.len() {
-            abort!("Parametros declarados de forma incorreta. Parêntese em aberto");
+            panic!("Parametros declarados de forma incorreta. Parêntese em aberto");
         }
         let fin_par = decl_line.find(')').expect("Parêntese de fechamento não encontrado na declaração dos parametros da seção");
         if fin_par < start_par {
-            abort!("Erro na sintaxe! Parêntese de fechamento veio antes do de abertura");
+            panic!("Erro na sintaxe! Parêntese de fechamento veio antes do de abertura");
         }
         let parameters = decl_line[start_par + 1..fin_par].trim();
         if parameters == "" {
@@ -662,14 +663,14 @@ fn parse_section_parameters(decl_line: &str) -> Vec<ExpectedParameter> {
 fn parse_section(lines: Vec<String>) -> Section {
     // Separa a seção em linha
     if lines.len() < 2 {
-        abort!("Erro fazendo parsing da seção. Número incorreto de linhas: {}.",
+        panic!("Erro fazendo parsing da seção. Número incorreto de linhas: {}.",
                lines.len())
     } else {
         // Checagens de declaração e finalização são feitas em parse
         // Declaração de uma seção:
         // PALAVRA_CHAVE nome
         if !lines[0].contains(' ') {
-            abort!("Erro na declaração da seção! Falta nome depois da palavra chave")
+            panic!("Erro na declaração da seção! Falta nome depois da palavra chave")
         }
         let params = parse_section_parameters(&lines[0]);
         let first_space = lines[0].find(' ').unwrap(); // Primeira ocorrencia de espaco
@@ -721,17 +722,17 @@ pub struct Global {
 fn split_global<'a>(glb: &'a str) -> Vec<&'a str> {
     let index = match glb.find(':') {
         Some(i) => i,
-        None => abort!("Numero incorreto de ':' na declaração de um global."),
+        None => panic!("Numero incorreto de ':' na declaração de um global."),
     };
     if index >= glb.len() - 1 {
-        abort!("Faltam informações depois do primeiro ':'")
+        panic!("Faltam informações depois do primeiro ':'")
     }
     let nindex = match glb[index + 1..].find(':') {
         Some(i) => i,
-        None => abort!("Numero incorreto de ':' na declaração de um global."),
+        None => panic!("Numero incorreto de ':' na declaração de um global."),
     };
     if nindex >= glb.len() - 1 {
-        abort!("Faltam informações após o segundo ':'")
+        panic!("Faltam informações após o segundo ':'")
     }
     vec![&glb[..index].trim(),
          &glb[index + 1..nindex + index + 1].trim(),
@@ -743,7 +744,7 @@ fn parse_global(glb: &str) -> Global {
     // Estrutura da declaração de um global: PALAVRA_CHAVE: nome: valor
     let words = split_global(glb.trim());
     if words.len() != 3 {
-        abort!("Problema na declaração do global. Número incorreto de ':': {}",
+        panic!("Problema na declaração do global. Número incorreto de ':': {}",
                words.len())
     }
     let is_const = match words[0].trim() {
