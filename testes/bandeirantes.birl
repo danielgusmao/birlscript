@@ -10,6 +10,6 @@ JAULA SHOW
     VEM: EMISSORA # Cria variavel EMISSORA
     BORA, CUMPADE!!!: EMISSORA # Guarda valor da entrada em EMISSORA com letras maiusculas
     E ELE QUE A GENTE QUER: EMISSORA, "BANDEIRANTES" # Compara com bandeirantes
-    E ELE MEMO: BANDEIRANTES() # Caso seja igual, execute bandeirantes
-    NUM E ELE: OUTRA(EMISSORA) # Diferente, execute outro
+    E ELE MEMO: É HORA DO: BANDEIRANTES # Caso seja igual, execute bandeirantes
+    NUM E ELE: É HORA DO: OUTRA(EMISSORA) # Diferente, execute outro
 SAINDO DA JAULA
